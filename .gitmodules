@@ -1,0 +1,6 @@
+[submodule "ColineServices"]
+	path = ColineServices
+	url = https://github.com/ColineTeam/ColineServices.git
+[submodule "src/ColineService"]
+	path = src/ColineService
+	url = https://github.com/ColineTeam/ColineServices.git
