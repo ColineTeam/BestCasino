@@ -231,7 +231,7 @@ class BestCasinoMain extends PluginBase implements Listener{
     }
     public function onSettingsMessage(\pocketmine\event\player\PlayerChatEvent $event){
         
-        if( $this->scopes[$event->getPlayer()->getName()] == "getMode"){
+        if(@$this->scopes[$event->getPlayer()->getName()] == "getMode"){
             if(is_numeric($event->getMessage()) ){
                 file_put_contents($this->getDataFolder()."frames.json", json_encode(array_merge($this->framesetting, ['mode' => $event->getMessage()])));
                 $event->getPlayer()->sendMessage(TF::YELLOW.'Все рамки записаны, перезагрузка плагина...');
