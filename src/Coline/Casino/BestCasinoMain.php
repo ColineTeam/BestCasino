@@ -1,28 +1,4 @@
 <?php
-
-/* MIT License
-
-Copyright (c) 2017 Alexey Lozovjagin
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
- */
-
 namespace Coline\Casino;
 
 use pocketmine\command\Command;
@@ -56,7 +32,7 @@ class BestCasinoMain extends PluginBase implements Listener{
         'player' => null,
         'started' => false
     ];
-    public $vectors = [], $frames = [], $button, $mode;
+    public $vectors = [], $frames = [], $button, $mode, $translation;
     public function onLoad() {
         $frames = @json_decode(file_get_contents($this->getDataFolder()."frames.json"), true);
         $this->button = @$frames['button'];
@@ -71,13 +47,35 @@ class BestCasinoMain extends PluginBase implements Listener{
         }
         }
         
-        
+                
     }
+    public function initializeLanguage(){
+        $lang = @$this->_getConfig()['lang'];
+        if(is_null($lang)){
+            $serverLang = $this->getServer()->getProperty("settings.language");
+            switch ($serverLang){
+//                case "eng":
+//                    $lang = "eng";
+//                break;
+                default:
+                    $lang = "rus";
+                break;
+            }
+            $this->getConfig()->set('lang', $lang);
+            $this->getConfig()->save();
+        }
+        $file = $lang.'.json';
+        $this->saveResource($file);
+        $phrases = json_decode(file_get_contents($this->getDataFolder().$file), true);
+        $this->translation = new \ColineServices\TranslationContainer($phrases);
+    }
+
     public function onEnable() {
+        $this->initializeLanguage();
         (new \ColineServices\Updater($this, 195, $this->getFile()))->update();
         $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this), 5*20);
-         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-         
+        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+               
          foreach ($this->frames as $frame => $data){ //даже не спрашивайте что здесь
              $xyz = explode(":", $data['vector']);
              
@@ -162,10 +160,10 @@ class BestCasinoMain extends PluginBase implements Listener{
                             $this->clearALL();
                            
                         }else{
-                            $player->sendPopup("На вашем счету не достаточно {$this->_getConfig()['currency_name']}. Для запуска игры нужно {$this->_getConfig()['money']} {$this->_getConfig()['currency_name']}");
+                            $player->sendPopup($this->translation->getTranslete('no_money', [$this->_getConfig()['currency_name'], $this->_getConfig()['money'], $this->_getConfig()['currency_name']]));
                         }
                     }else{
-                        $player->sendMessage(TF::YELLOW."Лотерея уже запущена");
+                        $player->sendMessage(TF::YELLOW.$this->translation->getTranslete('already_started'));
                     }
             }
             if($block->getId() == 199){
@@ -181,7 +179,7 @@ class BestCasinoMain extends PluginBase implements Listener{
             if($command->getName() == "settingcasino"){
                 if($player->isOp()){
                     $this->scopes[$player->getName()] = 1;
-                    $player->sendMessage("Нажмите на 1 рамку, желательно сделать как на схеме. Cхема:".PHP_EOL
+                    $player->sendMessage($this->translation->getTranslete("settings_start").PHP_EOL
                             ."[1][4][7]".PHP_EOL.
                              "[2][5][8][10]".PHP_EOL.
                                "[3][6][9]");
@@ -204,13 +202,13 @@ class BestCasinoMain extends PluginBase implements Listener{
            
            if($block->getId() == BlockIds::ITEM_FRAME_BLOCK){
                if($scope != 11){
-                    if($scope != 10){$player->sendMessage("Рамка {$scope} получена, пожалуйста нажмите на ".($scope+1)." Рамку");} else {$player->sendMessage("нажмите на кнопку запуска");}
+                    if($scope != 10){$player->sendMessage($this->translation->getTranslete('settings_step_1_start', [$scope, $scope+1]));} else {$player->sendMessage("нажмите на кнопку запуска");}
                     $this->framesetting[$scope] = $block->x. ":". $block->y. ":". $block->z;
                     $this->scopes[$player->getName()] = $scope +1;
                }
            } elseif ($block->getId() == BlockIds::WOODEN_BUTTON || $block->getId() == 77) {
                $this->scopes[$player->getName()] = "getMode";
-               $player->sendMessage("Кнопка получена, желайте ли вы включить, откидывание от рамок? Если нет напишите в чат 0, Чтобы включить откидывание по оси x напишите '1', по z - '2");
+               $player->sendMessage($this->translation->getTranslete('knockback_settings'));
                $this->framesetting = [
                    'frames' => $this->framesetting,
                    'button' => [
@@ -221,9 +219,9 @@ class BestCasinoMain extends PluginBase implements Listener{
                ];
              
        }else if($scope != 11) {
-               $player->sendMessage("Пожалуйста, нажмите на {$scope} рамку, то на что вы нажали уж совсем не похоже");
+               $player->sendMessage($this->translation->getTranslete('not_frame', [$scope]));
            } else {
-               $player->sendMessage("Это не похоже на кнопку");
+               $player->sendMessage($this->translation->getTranslete('not_button'));
            }
            $event->setCancelled();
        }
@@ -234,7 +232,7 @@ class BestCasinoMain extends PluginBase implements Listener{
         if(@$this->scopes[$event->getPlayer()->getName()] == "getMode"){
             if(is_numeric($event->getMessage()) ){
                 file_put_contents($this->getDataFolder()."frames.json", json_encode(array_merge($this->framesetting, ['mode' => $event->getMessage()])));
-                $event->getPlayer()->sendMessage(TF::YELLOW.'Все рамки записаны, перезагрузка плагина...');
+                $event->getPlayer()->sendMessage(TF::YELLOW.$this->translation->getTranslete('frames_saved'));
 
                  $this->getServer()->getPluginManager()->disablePlugin($this);
                  $this->getServer()->getPluginManager()->loadPlugin($this->getFile());
@@ -284,11 +282,11 @@ class BestCasinoMain extends PluginBase implements Listener{
             $block = $this->getTileByFrameID(10)->getBlock();
             //$player->getLevel()->addParticle(new \pocketmine\level\particle\GenericParticle(new Vector3($block->x, $block->y, $block->z), 23)); 
             $player->getLevel()->addSound(new \pocketmine\level\sound\GenericSound($player, 1051));
-            $player->sendPopup(TF::GREEN.TF::BOLD.'Вы выиграли! Вам вручен предмет');
+            $player->sendPopup(TF::GREEN.TF::BOLD.$this->translation->getTranslete('game_win'));
             $player->getInventory()->addItem(Item::get($items[0]));
         } else {
             $player->getLevel()->addSound(new \pocketmine\level\sound\DoorCrashSound($player));
-             $player->sendPopup(TF::RED.TF::BOLD.'Вы проиграли! '.TF::BLUE.'((((');
+             $player->sendPopup(TF::RED.TF::BOLD.$this->translation->getTranslete('game_lost').' '.TF::BLUE.'((((');
         }
         $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this), 5*20);
         $this->gamevariables['player'] = NULL;

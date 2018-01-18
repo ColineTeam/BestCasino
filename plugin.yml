@@ -8,6 +8,3 @@ website: infomcpe.ru
 commands:
     settingcasino:
         description: "Настройка казино"
-
-
- 
