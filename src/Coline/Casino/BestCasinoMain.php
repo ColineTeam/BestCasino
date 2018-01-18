@@ -13,11 +13,7 @@ use pocketmine\scheduler\PluginTask;
 use pocketmine\tile\ItemFrame;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat as TF;
-/**
- * BestCasinoMain от Алексея Лозовягина (https://vk.com/olekseyua)
- * License: MIT 
- * @author Alexey
- */
+
 class BestCasinoMain extends PluginBase implements Listener{
     public $items = [
         1 => BlockIds::GOLD_BLOCK,
@@ -45,18 +41,16 @@ class BestCasinoMain extends PluginBase implements Listener{
                 "activated" => false
             ];
         }
-        }
-        
-                
+        }       
     }
     public function initializeLanguage(){
         $lang = @$this->_getConfig()['lang'];
         if(is_null($lang)){
             $serverLang = $this->getServer()->getProperty("settings.language");
             switch ($serverLang){
-//                case "eng":
-//                    $lang = "eng";
-//                break;
+                case "eng":
+                    $lang = "eng";
+                break;
                 default:
                     $lang = "rus";
                 break;
@@ -182,7 +176,7 @@ class BestCasinoMain extends PluginBase implements Listener{
                     $player->sendMessage($this->translation->getTranslete("settings_start").PHP_EOL
                             ."[1][4][7]".PHP_EOL.
                              "[2][5][8][10]".PHP_EOL.
-                               "[3][6][9]");
+                             "[3][6][9]");
                 }else{
                     $player->sendMessage("Я вам не доверяю");
                 }
