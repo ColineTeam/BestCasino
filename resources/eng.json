@@ -1,0 +1,13 @@
+{
+    "no_money": "You have no enough {%0}. To run the game you need {%1}{%2}",
+    "already_started": "The lottery already began",
+    "settings_start": "Click to 1st frame, preferably as in schema. Schema:",
+    "settings_step_1_start": "Got frame N{%0}, now please click to frame N{%1}",
+    "knockback_settings": "Got button, do you want enable throwing players from frames? If no just write in chat 0. To enable throwing players on x-axis write in chat 1 or on z-axis write in chat 2",
+    "not_frame": "It is not frame. Please click on frame N{%0}",
+    "not_button": "It is not button",
+    "frames_saved": "Got all frames, now reloading the plugin",
+    "game_win": "You won! You got the prize!",
+    "game_lost": "You lost :("
+    
+}
