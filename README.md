@@ -1,4 +1,4 @@
-## BestCasino 1.2.1 by ColineTeam 
+## BestCasino by ColineTeam 
 
 Демонстарация: https://vk.com/video227150488_456239143  
 
