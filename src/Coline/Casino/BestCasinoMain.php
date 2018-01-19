@@ -6,21 +6,14 @@ use pocketmine\command\CommandSender;
 use pocketmine\plugin\PluginBase;
 use pocketmine\event\Listener;
 use pocketmine\math\Vector3;
-use pocketmine\block\BlockIds;
 use pocketmine\item\Item;
-use pocketmine\item\ItemIds;
+use pocketmine\block\BlockIds;
 use pocketmine\scheduler\PluginTask;
 use pocketmine\tile\ItemFrame;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat as TF;
 
 class BestCasinoMain extends PluginBase implements Listener{
-    public $items = [
-        1 => BlockIds::GOLD_BLOCK,
-        2 => BlockIds::DIAMOND_BLOCK,
-        3 => BlockIds::IRON_BLOCK,
-    ];
-    public $rotationTask = false;
     private $scopes = [];
     
     public $framesetting = [];
@@ -28,21 +21,45 @@ class BestCasinoMain extends PluginBase implements Listener{
         'player' => null,
         'started' => false
     ];
-    public $vectors = [], $frames = [], $button, $mode, $translation;
+    public $vectors = [], $frames = [], $translation, $rotationTask = false, $buttons = [], $frames_data = [], $games = [];
     public function onLoad() {
-        $frames = @json_decode(file_get_contents($this->getDataFolder()."frames.json"), true);
-        $this->button = @$frames['button'];
-        $this->mode = @$frames['mode'];
-        $frames = $frames['frames'];
-        if(@$frames != null){
-        foreach ($frames as $num => $frame){
-            $this->frames[$num] =[
-                'vector' => $frame,
-                "activated" => false
-            ];
+         $this->saveDefaultConfig();
+        if(@$this->_getConfig()['items'] == null){
+            $this->getConfig()->set('items', [41,57,42]);
+            $this->getConfig()->save();
         }
-        }       
+        $frames = @json_decode(file_get_contents($this->getDataFolder()."frames.json"), true);
+        if(!is_null($frames)){
+            if(@$frames['frames'] == null){
+                foreach ($frames as $id => $frames_data){ //даже не спрашивайте что здесь  
+                    $this->frames_data[$id] = $frames_data;
+                    $this->buttons[$frames_data['button']] = $id;
+                    foreach ($frames_data['frames'] as $num => $frame){ 
+                        $this->frames[$id][$num] =[
+                            'vector' => $frame,
+                            "activated" => false
+                        ]; 
+                    }  
+                }
+            }else{ //если старая версия
+                $frames_save = [];
+                $button = $frames['button'];
+                $button = $button['x'].":".$button['y'].":".$button['z'];
+                $frames['button'] = $button;
+                $frames_save[] = $frames;
+                file_put_contents($this->getDataFolder()."frames.json", json_encode($frames_save));
+                unset($frames_save);
+                unset($button);
+                $this->reloadPlugin();
+            }
+        }
     }
+    private function reloadPlugin(){
+            $this->getServer()->getPluginManager()->disablePlugin($this);
+            $this->getServer()->getPluginManager()->loadPlugin($this->getFile());
+            $this->getServer()->getPluginManager()->enablePlugin( $this->getServer()->getPluginManager()->getPlugin("BestCasino"));
+    }
+
     public function initializeLanguage(){
         $lang = @$this->_getConfig()['lang'];
         if(is_null($lang)){
@@ -65,35 +82,41 @@ class BestCasinoMain extends PluginBase implements Listener{
     }
 
     public function onEnable() {
-        $this->initializeLanguage();
+       
         (new \ColineServices\Updater($this, 195, $this->getFile()))->update();
-        $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this), 5*20);
+       
+        $this->initializeLanguage();
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-               
-         foreach ($this->frames as $frame => $data){ //даже не спрашивайте что здесь
-             $xyz = explode(":", $data['vector']);
-             
-             $this->vectors[$xyz[0].":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] .":". $xyz[1].":". ($xyz[2] + 1)] = true;
-             $this->vectors[$xyz[0] .":". $xyz[1].":". ($xyz[2] - 1)] = true;
-             $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". ($xyz[2] + 1)] = true;
-             $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". ($xyz[2] - 1)] = true;
-             $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] + 2 .":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] - 2 .":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] + 2 .":". $xyz[1].":". $xyz[2]] = true;
-             $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". ($xyz[2] -1)] = true;
-             $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". ($xyz[2] +1)] = true;
+         foreach ($this->frames as $id => $frames_data){ //даже не спрашивайте что здесь
+              $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this, $id), 5*20);
+              foreach ($frames_data as $frame_id => $frame_data){
+                $xyz = explode(":", $frame_data['vector']);
+
+                $this->vectors[$xyz[0].":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] .":". $xyz[1].":". ($xyz[2] + 1)] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] .":". $xyz[1].":". ($xyz[2] - 1)] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". ($xyz[2] + 1)] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". ($xyz[2] - 1)] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] + 2 .":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] - 2 .":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] + 2 .":". $xyz[1].":". $xyz[2]] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] + 1 .":". $xyz[1].":". ($xyz[2] -1)] = $this->frames_data[$id]['mode'];
+                $this->vectors[$xyz[0] - 1 .":". $xyz[1].":". ($xyz[2] +1)] = $this->frames_data[$id]['mode'];
+              }
+              
          }
-         $this->saveDefaultConfig();
+         $this->items = $this->getConfig()->get('items');
     }
     public function Interact(\pocketmine\event\player\PlayerInteractEvent $event){
         $block = $event->getBlock();
-        foreach ($this->frames as $data){ // не лапать рамки!
-            $vector = $data['vector'];
-            if($vector == $block->x.":".$block->y.":".$block->z){
-                $event->setCancelled();
+        foreach ($this->frames as $id => $frames_data){ // не лапать рамки!
+            foreach ($frames_data as $frame_id => $frame_data){
+                $vector = $frame_data['vector'];
+                if($vector == $block->x.":".$block->y.":".$block->z){
+                    $event->setCancelled();
+                }
             }
         }
     }
@@ -109,31 +132,26 @@ class BestCasinoMain extends PluginBase implements Listener{
              $vectorstring = round($player->x).":".round($player->y).":".round($player->z);
            
             
-            if($this->gamevariables['player'] != $player){
+            if(@$this->games[$player->getName()]['played'] != true){
                 if(@!is_null($this->vectors[$vectorstring])){
                     $laspostion = explode(":", $player->lastpostion);
-                  $mode = $this->mode;
-                    
-                   $x = 0;
-                   $z = 0;
-                  if($mode == 1){
-                      if(($laspostion[0] - $player->x) > 0){
-                           $x = 1.25;
-                      }else{ 
-                         $x = -1.25;
-                      }
-                  }else if($mode == 2) {
-                      if(($laspostion[2] - $player->z) > 0){
-                           $z = 1.25;
-                      }else{ 
-                        $z = -1.25;
-                      }
-                     
-                  }
-
-                   
-                    $player->setMotion(new Vector3($x, 0.1, $z));  
-                    
+                    $mode = $this->vectors[$vectorstring];
+                     $x = 0;
+                     $z = 0;
+                    if($mode == 1){
+                        if(($laspostion[0] - $player->x) > 0){
+                            $x = 1.25;
+                        }else{ 
+                            $x = -1.25;
+                        }
+                    }else if($mode == 2) {
+                        if(($laspostion[2] - $player->z) > 0){
+                            $z = 1.25;
+                        }else{ 
+                            $z = -1.25;
+                        }
+                    }
+                    $player->setMotion(new Vector3($x, 0.3, $z));  
                 }
             }
              $player->lastpostion = $vectorstring;
@@ -145,20 +163,25 @@ class BestCasinoMain extends PluginBase implements Listener{
         $player = $event->getPlayer();
         $block = $event->getBlock();
         if($block->getId() == BlockIds::STONE_BUTTON){
-            if($block->getX() == $this->button['x'] && $block->getY() == $this->button['y'] && $block->getZ() == $this->button['z']){
-                    if($this->gamevariables['started'] == FALSE){
-                        if($this->getMoney()->getMoneyProviderByPlayer($player)->getMoney($this->_getConfig()['money'])   >= $this->_getConfig()['money']){
-                            $this->getMoney()->getMoneyProviderByPlayer($player)->reduceMoney($this->_getConfig()['money']);
-                            $this->gamevariables['player'] = $player;
-                            $this->start();
-                            $this->clearALL();
-                           
+            foreach ($this->buttons as $button => $id){
+                if($block->getX().":" . $block->getY().":".  $block->getZ() == $button){
+                    if(@is_null($this->frames[$id]['cleaning'])){
+                        if(@$this->games[$player->getName()]['started'] == FALSE){
+                            if($this->getMoney()->getMoneyProviderByPlayer($player)->getMoney($this->_getConfig()['money'])   >= $this->_getConfig()['money']){
+                                $this->getMoney()->getMoneyProviderByPlayer($player)->reduceMoney($this->_getConfig()['money']);
+                                $this->games[$player->getName()]['played'] = true;
+                                $this->games[$player->getName()]['id'] = $id;
+                                $this->start($player);
+                                $this->clearALL($id);
+
+                            }else{
+                                $player->sendPopup($this->translation->getTranslete('no_money', [$this->_getConfig()['currency_name'], $this->_getConfig()['money'], $this->_getConfig()['currency_name']]));
+                            }
                         }else{
-                            $player->sendPopup($this->translation->getTranslete('no_money', [$this->_getConfig()['currency_name'], $this->_getConfig()['money'], $this->_getConfig()['currency_name']]));
+                            $player->sendMessage(TF::YELLOW.$this->translation->getTranslete('already_started'));
                         }
-                    }else{
-                        $player->sendMessage(TF::YELLOW.$this->translation->getTranslete('already_started'));
                     }
+                }
             }
             if($block->getId() == 199){
                 $event->setCancelled();
@@ -196,7 +219,7 @@ class BestCasinoMain extends PluginBase implements Listener{
            
            if($block->getId() == BlockIds::ITEM_FRAME_BLOCK){
                if($scope != 11){
-                    if($scope != 10){$player->sendMessage($this->translation->getTranslete('settings_step_1_start', [$scope, $scope+1]));} else {$player->sendMessage("нажмите на кнопку запуска");}
+                    if($scope != 10){$player->sendMessage($this->translation->getTranslete('settings_step_1_start', [$scope, $scope+1]));} else {$player->sendMessage($this->translation->getTranslete('settings_step_1_end'));}
                     $this->framesetting[$scope] = $block->x. ":". $block->y. ":". $block->z;
                     $this->scopes[$player->getName()] = $scope +1;
                }
@@ -205,11 +228,7 @@ class BestCasinoMain extends PluginBase implements Listener{
                $player->sendMessage($this->translation->getTranslete('knockback_settings'));
                $this->framesetting = [
                    'frames' => $this->framesetting,
-                   'button' => [
-                       'x' => $block->x,
-                       'y' => $block->y,
-                       'z' => $block->z
-                   ]
+                   'button' => $block->x. ":". $block->y. ":" . $block->z
                ];
              
        }else if($scope != 11) {
@@ -225,36 +244,45 @@ class BestCasinoMain extends PluginBase implements Listener{
         
         if(@$this->scopes[$event->getPlayer()->getName()] == "getMode"){
             if(is_numeric($event->getMessage()) ){
-                file_put_contents($this->getDataFolder()."frames.json", json_encode(array_merge($this->framesetting, ['mode' => $event->getMessage()])));
+                $file = @file_get_contents($this->getDataFolder()."frames.json");
+                if(!is_null($file)){
+                    $write = json_decode($file, true);
+                }else{
+                    $write = [];
+                }
+                
+                $write[] = array_merge($this->framesetting, ['mode' => $event->getMessage()]);
+                file_put_contents($this->getDataFolder()."frames.json",json_encode($write));
+                unset($write);
                 $event->getPlayer()->sendMessage(TF::YELLOW.$this->translation->getTranslete('frames_saved'));
 
-                 $this->getServer()->getPluginManager()->disablePlugin($this);
-                 $this->getServer()->getPluginManager()->loadPlugin($this->getFile());
-                 $this->getServer()->getPluginManager()->enablePlugin( $this->getServer()->getPluginManager()->getPlugin("BestCasino"));
-                 $event->setCancelled();
+                $this->reloadPLugin();
+                $event->setCancelled();
                  
             }}
              
         }
-    public function start(){
-        $this->gamevariables['started'] = true;
-        $this->preStart();
-        $this->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this, 1), 0.5*20);
-        if ($this->rotationTask == false){
+    public function start($player){
+        $this->games[$player->getName()]['started'] = true;
+        $this->preStart($this->games[$player->getName()]['id']);
+        $this->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this, 1, $player), 0.5*20);
+        if (@$this->rotationTask[$this->games[$player->getName()]['id']] == false){
             
-            $this->rotationTask = TRUE;
-        $this->getServer()->getScheduler()->scheduleDelayedRepeatingTask(new RotationTask($this), 0.1*20, 0.3*20);
+            $this->rotationTask[$this->games[$player->getName()]['id']] = TRUE;
+            $this->getServer()->getScheduler()->scheduleDelayedRepeatingTask(new RotationTask($this, $this->games[$player->getName()]['id']), 0.1*20, 0.5*20);
         }
          
     }
-    public function preStart(){
-        foreach ($this->frames as $key => $data){
-             $frameTile = $this->getTileByFrameID($key);
-            if($key != 10){
-                $frameTile->setItem(Item::get(90)); // Ставим во все ячейки портал 
-            }else{
-                $frameTile->setItem(Item::get(0));
-            }
+    public function preStart($id){
+        foreach ($this->frames[$id] as $key => $data){
+             if(is_numeric($key)){
+                $frameTile = $this->getTileByFrameID($id, $key);
+                if($key != 10){
+                    $frameTile->setItem(Item::get(90)); // Ставим во все ячейки портал 
+                }else{
+                    $frameTile->setItem(Item::get(0));
+                }
+             }
         }
     }
     public function end(\pocketmine\Player $player){
@@ -264,37 +292,39 @@ class BestCasinoMain extends PluginBase implements Listener{
             8
         ];
         $framesTile = [];
+        $id = $this->games[$player->getName()]['id'];
         foreach ($frames as $frame){
-            $framesTile[] = $this->getTileByFrameID($frame);
+            $framesTile[] = $this->getTileByFrameID($id, $frame);
         }
         $items = [];
         foreach ($framesTile as $frame){
             $items[] = $frame->getItem()->getId();
         }
         if(($items[0] == $items[1] && $items[1] == $items[2]) && ($items[0] == $items[2])){
-            $this->getTileByFrameID(10)->setItem(Item::get($items[0]));
-            $block = $this->getTileByFrameID(10)->getBlock();
+            $this->getTileByFrameID($id, 10)->setItem(Item::get($items[0]));
+            $block = $this->getTileByFrameID($id, 10)->getBlock();
             //$player->getLevel()->addParticle(new \pocketmine\level\particle\GenericParticle(new Vector3($block->x, $block->y, $block->z), 23)); 
             $player->getLevel()->addSound(new \pocketmine\level\sound\GenericSound($player, 1051));
             $player->sendPopup(TF::GREEN.TF::BOLD.$this->translation->getTranslete('game_win'));
             $player->getInventory()->addItem(Item::get($items[0]));
         } else {
-            $player->getLevel()->addSound(new \pocketmine\level\sound\DoorCrashSound($player));
+            $player->getLevel()->addSound(new \pocketmine\level\sound\EndermanTeleportSound($player));
              $player->sendPopup(TF::RED.TF::BOLD.$this->translation->getTranslete('game_lost').' '.TF::BLUE.'((((');
         }
-        $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this), 5*20);
-        $this->gamevariables['player'] = NULL;
-        $this->gamevariables['started'] = FALSE;
+        $this->frames[$id]['cleaning'] = true;
+        $this->getServer()->getScheduler()->scheduleDelayedTask(new ClearTask($this, $id), 5*20);
+        $this->rotationTask[$this->games[$player->getName()]['id']] = TRUE;
+        unset($this->games[$player->getName()]);
     }
 
-    public function clearALL(){
-        foreach ($this->frames as $key => $data){
-            $this->frames[$key]['activated'] = FALSE;
+    public function clearALL($id){
+        foreach ($this->frames[$id] as $key => $data){
+            if(is_numeric($key)) $this->frames[$id][$key]['activated'] = FALSE;
         }
     }
 
-    public function getTileByFrameID(int $id) : ItemFrame{
-        $vector = explode(':', $this->frames[$id]['vector']);
+    public function getTileByFrameID(int $id, int $frame_id) : ItemFrame{
+        $vector = explode(':', $this->frames[$id][$frame_id]['vector']);
         return $this->getServer()->getDefaultLevel()->getTile(new Vector3((int) $vector[0], (int) $vector[1], (int) $vector[2]));
     }
     private function getMoney(){
@@ -307,34 +337,37 @@ class BestCasinoMain extends PluginBase implements Listener{
 }
 
 class RotationTask extends PluginTask{
-    public function __construct(BestCasinoMain $plugin) {
+    public function __construct(BestCasinoMain $plugin, $id) {
         $this->plugin = $plugin;
+        $this->id = $id;
         parent::__construct($plugin);
     }
     public function onRun($currentTick) {
-        foreach ($this->plugin->frames as $frame => $data){
-            if($frame != 10){
-               
-            $frameTile = $this->plugin->getTileByFrameID($frame);
-            $frameData = $this->plugin->frames[$frame];
-            $frameRotation = $frameTile->getItemRotation();
-            if($frameData['activated'] == FALSE){
-                 if($frameRotation == 4){
-                    $frameTile->setItemRotation(0);
-                } else {
-                    $frameTile->setItemRotation($frameRotation + 1);
+        foreach ($this->plugin->frames[$this->id] as $frame => $data){
+            if(is_numeric($frame)){
+                if($frame != 10){
+                    $frameTile = $this->plugin->getTileByFrameID($this->id, $frame);
+                    $frameData = $data;
+                    $frameRotation = $frameTile->getItemRotation();
+                    if($frameData['activated'] == FALSE){
+                         if($frameRotation == 4){
+                            $frameTile->setItemRotation(0);
+                        } else {
+                            $frameTile->setItemRotation($frameRotation + 1);
+                        }
+                       // $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new RotationTask($this->plugin), 1*20);
+                    }
                 }
-               // $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new RotationTask($this->plugin), 1*20);
             }
-         }
         }
     }
     
 }
 class FillingTask extends PluginTask{
-     public function __construct(BestCasinoMain $plugin, int $frameNumber = 1) {
+     public function __construct(BestCasinoMain $plugin, int $frameNumber = 1, Player $player) {
         $this->plugin = $plugin;
         $this->frame = $frameNumber;
+        $this->player = $player;
         parent::__construct($plugin);
     }
     public function onRun($currentTick) {
@@ -343,7 +376,7 @@ class FillingTask extends PluginTask{
             
         /* @var $frameTile ItemFrame */
             
-          $player = $this->plugin->gamevariables['player'];
+          $player = $this->player;
           /* @var $player Player */
           if($frame <= 3){
               $player->getLevel()->addSound(new \pocketmine\level\sound\PopSound($player));
@@ -352,34 +385,36 @@ class FillingTask extends PluginTask{
           }else if($frame <= 9 && $frame > 6 ){
               $player->getLevel()->addSound(new \pocketmine\level\sound\PopSound($player));
           }
-              
-          $frameData = $this->plugin->frames[$frame];
-          $frameTile = $this->plugin->getTileByFrameID($frame);
+          $id = $this->plugin->games[$player->getName()]['id'];
+          $frameData = $this->plugin->frames[$id][$frame];
+          $frameTile = $this->plugin->getTileByFrameID($id, $frame);
          if($frameData['activated'] == FALSE){
-            $this->plugin->frames[$frame]['activated'] = true;
-             $frameTile->setItem(Item::get($this->plugin->items[mt_rand(1, count($this->plugin->items))]));
+            $this->plugin->frames[$id][$frame]['activated'] = true;
+             $frameTile->setItem(Item::get($this->plugin->items[mt_rand(0, count($this->plugin->items) -1)]));
              $frameTile->setItemRotation(0);
              if($frame == 3 || $frame == 6){
-                $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this->plugin, $frame + 1), 0.7*20);
+                $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this->plugin, $frame + 1, $this->player), 0.7*20);
             }else{
-             $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this->plugin, $frame + 1), 0.5*20);
+                 $this->plugin->getServer()->getScheduler()->scheduleDelayedTask(new FillingTask($this->plugin, $frame + 1, $this->player), 0.5*20);
             }
             if($frame + 1 == 10){
-                $this->plugin->end($this->plugin->gamevariables['player']);
+                $this->plugin->end($this->player);
             }
          }
         }
     }
 }
 class ClearTask extends PluginTask{
-    public function __construct(BestCasinoMain $plugin) {
+    public function __construct(BestCasinoMain $plugin, $id) {
         $this->plugin = $plugin;
+        $this->id = $id;
         parent::__construct($plugin);
     }
     public function onRun($currentTick) {
-        if( $this->plugin->gamevariables['started'] == FALSE){
-            $this->plugin->clearALL();
-            $this->plugin->preStart();
+        if( true){
+            $this->plugin->clearALL($this->id);
+            $this->plugin->preStart($this->id);
+            unset($this->plugin->frames[$this->id]['cleaning']);
         }
     }
 }

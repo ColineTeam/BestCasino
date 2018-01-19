@@ -6,4 +6,9 @@ money: 100
 # 1 - EconomyAPI
 money_plugn: 1
 
+items:
+- 41
+- 57
+- 42
+
 ...
