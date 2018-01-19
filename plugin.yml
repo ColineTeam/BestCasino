@@ -1,10 +1,10 @@
 name: BestCasino
 main: Coline\Casino\BestCasinoMain
-author: Алексей
+author: ColineTeam
 version: 2.0
 api: [2.0.0, 3.0.0-ALPHA7, 3.0.0-ALPHA8, 3.0.0-ALPHA9, 3.0.0-ALPHA10]
 load: STARTUP
-website: infomcpe.ru
+website: pmine.ru
 commands:
     settingcasino:
         description: "Настройка казино"
