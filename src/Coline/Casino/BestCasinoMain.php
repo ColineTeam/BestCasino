@@ -56,8 +56,9 @@ class BestCasinoMain extends PluginBase implements Listener {
 
 		$this->initializeLanguage();
 		if($this->getServer()->getPluginManager()->getPlugin('EconomyAPI') == null){
-			$this->getLogger()->error($this->translation->getTranslete('economy_not_find'));
+			$this->getLogger()->warning($this->translation->getTranslete('economy_not_find'));
 			$this->getServer()->getPluginManager()->disablePlugin($this);
+			return;
 		}
 
 
@@ -67,18 +68,18 @@ class BestCasinoMain extends PluginBase implements Listener {
 			foreach ($frames_data as $frame_id => $frame_data) {
 				$xyz = explode(":", $frame_data['vector']);
 
-				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] + 2 . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] - 2 . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] + 2 . ":" . $xyz[1] . ":" . $xyz[2]] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = $this->frames_data[$id]['mode'];
-				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = $this->frames_data[$id]['mode'];
+				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = true;
+				$this->vectors[$xyz[0] . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = true;
+				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = true;
+				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = true;
+				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] + 2 . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] - 2 . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] + 2 . ":" . $xyz[1] . ":" . $xyz[2]] = true;
+				$this->vectors[$xyz[0] + 1 . ":" . $xyz[1] . ":" . ($xyz[2] - 1)] = true;
+				$this->vectors[$xyz[0] - 1 . ":" . $xyz[1] . ":" . ($xyz[2] + 1)] = true;
 			}
 
 		}
@@ -104,7 +105,7 @@ class BestCasinoMain extends PluginBase implements Listener {
 		if (($from->getFloorX() != $to->getFloorX() || $from->getFloorZ() != $to->getFloorZ()) || $from->getFloorY() != $to->getFloorY()) {
 			$player = $e->getPlayer();
 			if (@$this->games[$player->getName()]['played'] != true) {
-				if (@!is_null($this->vectors[$player->getFloorX().':'.$player->getFloorY().':'.$player->getFloorZ()])) {
+				if (@isset($this->vectors[$player->getFloorX().':'.$player->getFloorY().':'.$player->getFloorZ()])) {
                     $vector = $player->getDirectionVector();
 					$player->setMotion(new Vector3(-($vector->x), -($vector->y), -($vector->z)));
 				}
